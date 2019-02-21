@@ -2,6 +2,7 @@
 """Actual App instance implementation."""
 from __future__ import absolute_import, unicode_literals
 
+from datetime import datetime
 import os
 import threading
 import warnings
@@ -31,6 +32,8 @@ from celery.utils import abstract
 from celery.utils.collections import AttributeDictMixin
 from celery.utils.dispatch import Signal
 from celery.utils.functional import first, head_from_fun, maybe_list
+from celery.utils.time import timezone, \
+    get_exponential_backoff_interval, to_utc
 from celery.utils.imports import gen_task_name, instantiate, symbol_by_name
 from celery.utils.log import get_logger
 from celery.utils.objects import FallbackContext, mro_lookup
@@ -861,8 +864,8 @@ class Celery(object):
 
     def now(self):
         """Return the current time and date as a datetime."""
-        from datetime import datetime
-        return datetime.utcnow().replace(tzinfo=self.timezone)
+        now_in_utc = to_utc(datetime.utcnow())
+        return now_in_utc.astimezone(self.timezone)
 
     def select_queues(self, queues=None):
         """Select subset of queues.
@@ -1225,7 +1228,7 @@ class Celery(object):
 
     def uses_utc_timezone(self):
         """Check if the application uses the UTC timezone."""
-        return self.conf.timezone == 'UTC' or self.conf.timezone is None
+        return self.timezone == timezone.utc
 
     @cached_property
     def timezone(self):
@@ -1235,14 +1238,12 @@ class Celery(object):
         :setting:`timezone` setting.
         """
         conf = self.conf
-        tz = conf.timezone or 'UTC'
-        if not tz:
+        if not conf.timezone:
             if conf.enable_utc:
-                return timezone.get_timezone('UTC')
+                return timezone.utc
             else:
-                if not conf.timezone:
-                    return timezone.local
-        return timezone.get_timezone(tz)
+                return timezone.local
+        return timezone.get_timezone(conf.timezone)
 
 
 App = Celery  # noqa: E305 XXX compat

@@ -77,10 +77,10 @@ class test_App:
         tz_utc = timezone.get_timezone('UTC')
         tz_us_eastern = timezone.get_timezone(timezone_setting_value)
 
-        now = datetime.utcnow().replace(tzinfo=tz_utc)
+        now = to_utc(datetime.utcnow())
         app_now = self.app.now()
 
-        assert app_now.tzinfo == tz_utc
+        assert app_now.tzinfo is tz_utc
         assert app_now - now <= timedelta(seconds=1)
 
         # Check that timezone conversion is applied from configuration
@@ -90,7 +90,8 @@ class test_App:
         del self.app.timezone
 
         app_now = self.app.now()
-        assert app_now.tzinfo == tz_us_eastern
+
+        assert app_now.tzinfo.zone == tz_us_eastern.zone
 
         diff = to_utc(datetime.utcnow()) - localize(app_now, tz_utc)
         assert diff <= timedelta(seconds=1)
@@ -100,7 +101,7 @@ class test_App:
         del self.app.timezone
         app_now = self.app.now()
         assert self.app.timezone == tz_us_eastern
-        assert app_now.tzinfo == tz_us_eastern
+        assert app_now.tzinfo.zone == tz_us_eastern.zone
 
     @patch('celery.app.base.set_default_app')
     def test_set_default(self, set_default_app):
@@ -824,17 +825,27 @@ class test_App:
 
     def test_timezone__none_set(self):
         self.app.conf.timezone = None
-        tz = self.app.timezone
-        assert tz == timezone.get_timezone('UTC')
+        self.app.conf.enable_utc = True
+        assert self.app.timezone == timezone.utc
+        del self.app.timezone
+        self.app.conf.enable_utc = False
+        assert self.app.timezone == timezone.local
 
     def test_uses_utc_timezone(self):
         self.app.conf.timezone = None
+        self.app.conf.enable_utc = True
         assert self.app.uses_utc_timezone() is True
 
+        self.app.conf.enable_utc = False
+        del self.app.timezone
+        assert self.app.uses_utc_timezone() is False
+
         self.app.conf.timezone = 'US/Eastern'
+        del self.app.timezone
         assert self.app.uses_utc_timezone() is False
 
         self.app.conf.timezone = 'UTC'
+        del self.app.timezone
         assert self.app.uses_utc_timezone() is True
 
     def test_compat_on_configure(self):
