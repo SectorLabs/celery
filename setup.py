@@ -203,7 +203,7 @@ meta = parse_dist_meta()
 setuptools.setup(
     name=NAME,
     packages=setuptools.find_packages(exclude=['t', 't.*']),
-    version=meta['version'],
+    version=os.environ.get('VERSION', meta['version']),
     description=meta['doc'],
     long_description=long_description(),
     keywords=meta['keywords'],
