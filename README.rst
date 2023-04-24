@@ -11,6 +11,13 @@
 
 --
 
+Disclaimer
+=============
+The fork is no longer used. It's archived for historical purposes.
+
+The fork is based on celery v4.1.1 and it was patched to work with Python 3.8
+All SL apps are now using celery v5.
+
 What's a Task Queue?
 ====================
 
